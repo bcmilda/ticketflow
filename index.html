@@ -90,6 +90,20 @@
     <div class="modal-body">
       <form id="event-form">
 
+        <!-- Skóre atraktivity -->
+        <div class="score-panel" id="score-panel">
+          <div class="score-panel-algo">
+            <div class="score-circle" id="algo-score-circle"><span id="algo-score-value">–</span></div>
+            <div>
+              <div class="eyebrow">Algoritmické skóre</div>
+              <div class="score-label" id="algo-score-label">Vyplň data níže</div>
+              <div class="score-completeness" id="algo-score-completeness"></div>
+            </div>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="ai-analyze-btn">🤖 Analyzovat pomocí AI</button>
+        </div>
+        <div class="ai-result" id="ai-result" style="display:none;"></div>
+
         <!-- Základní info -->
         <div class="section-block">
           <div class="section-title">Základní info</div>
@@ -339,10 +353,27 @@
         <label>Client Secret</label>
         <input type="password" id="f-spotify-client-secret" autocomplete="off" />
       </div>
+
+      <div class="section-title" style="margin-top:26px;">AI analýza (Claude) <span id="ai-status" class="settings-status" style="margin-left:auto;"><span class="dot"></span><span id="ai-status-text">Nepřipojeno</span></span></div>
+      <p style="font-size:12.5px; color:var(--text-muted); margin-top:0;">
+        Vyžaduje malý Cloudflare Worker proxy (stejný princip jako u FinanceFlow), který drží tvůj Anthropic API klíč. Viz README → cloudflare-worker/.
+      </p>
+      <div class="field" style="margin-top:14px;">
+        <label>Worker URL</label>
+        <input type="text" id="f-ai-worker-url" autocomplete="off" placeholder="https://ticketflow-ai.tvuj-subdomain.workers.dev" />
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label>Proxy Secret</label>
+        <input type="password" id="f-ai-proxy-key" autocomplete="off" />
+      </div>
+      <div class="checkbox-field">
+        <input type="checkbox" id="f-ai-web-search" />
+        <label for="f-ai-web-search">Zahrnout web search do analýzy (přesnější, ale dražší a pomalejší)</label>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" id="settings-cancel-btn">Zrušit</button>
-      <button class="btn btn-primary" id="settings-save-btn">Uložit klíče</button>
+      <button class="btn btn-primary" id="settings-save-btn">Uložit nastavení</button>
     </div>
   </div>
 </div>

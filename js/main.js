@@ -14,6 +14,12 @@ import {
   hasSpotifyKeys
 } from "./spotify.js";
 import {
+  saveAiSettings,
+  getAiSettings,
+  hasAiSettings,
+  runAiAnalysis
+} from "./ai.js";
+import {
   renderEvents,
   filterEvents,
   updateStats,
@@ -29,6 +35,11 @@ import {
   openSettingsModal,
   closeSettingsModal,
   setSpotifyStatus,
+  setAiStatus,
+  refreshAlgoScorePanel,
+  showAiLoading,
+  showAiResult,
+  showAiError,
   showToast
 } from "./ui.js";
 
@@ -57,6 +68,8 @@ watchAuth(async (user) => {
 
     const connected = await hasSpotifyKeys(user.uid).catch(() => false);
     setSpotifyStatus(connected);
+    const aiConnected = await hasAiSettings(user.uid).catch(() => false);
+    setAiStatus(aiConnected);
   } else {
     document.getElementById("login-screen").style.display = "flex";
     document.getElementById("app-shell").style.display = "none";
@@ -128,6 +141,30 @@ document.getElementById("event-modal").addEventListener("click", (e) => {
 
 document.getElementById("f-eventDate").addEventListener("change", (e) => {
   document.getElementById("f-dayOfWeek").value = dayOfWeekFromDate(e.target.value);
+  refreshAlgoScorePanel();
+});
+
+// přepočítej algoritmické skóre při jakékoliv změně ve formuláři
+document.getElementById("event-form").addEventListener("input", refreshAlgoScorePanel);
+document.getElementById("event-form").addEventListener("change", refreshAlgoScorePanel);
+
+document.getElementById("ai-analyze-btn").addEventListener("click", async () => {
+  if (!currentUser) return;
+  const formData = collectEventFormData();
+  const algoScore = refreshAlgoScorePanel();
+
+  showAiLoading();
+  try {
+    const result = await runAiAnalysis(currentUser.uid, formData, algoScore);
+    document.getElementById("event-form").dataset.aiAnalysis = JSON.stringify(result);
+    showAiResult(result);
+  } catch (err) {
+    if (err.message === "NO_AI_SETTINGS") {
+      showAiError("Nejdřív nastav AI proxy (Worker URL + Proxy Secret) v Nastavení ⚙");
+    } else {
+      showAiError("Analýza selhala: " + err.message);
+    }
+  }
 });
 
 document.getElementById("event-save-btn").addEventListener("click", async () => {
@@ -201,6 +238,12 @@ document.getElementById("settings-btn").addEventListener("click", async () => {
   const keys = await getSpotifyKeys(currentUser.uid).catch(() => null);
   document.getElementById("f-spotify-client-id").value = keys?.clientId || "";
   document.getElementById("f-spotify-client-secret").value = keys?.clientSecret || "";
+
+  const aiSettings = await getAiSettings(currentUser.uid).catch(() => null);
+  document.getElementById("f-ai-worker-url").value = aiSettings?.workerUrl || "";
+  document.getElementById("f-ai-proxy-key").value = aiSettings?.proxyKey || "";
+  document.getElementById("f-ai-web-search").checked = !!aiSettings?.useWebSearch;
+
   openSettingsModal();
 });
 
@@ -213,16 +256,32 @@ document.getElementById("settings-modal").addEventListener("click", (e) => {
 document.getElementById("settings-save-btn").addEventListener("click", async () => {
   const clientId = document.getElementById("f-spotify-client-id").value;
   const clientSecret = document.getElementById("f-spotify-client-secret").value;
-  if (!clientId || !clientSecret) {
-    showToast("Vyplň Client ID i Client Secret", true);
-    return;
-  }
+  const workerUrl = document.getElementById("f-ai-worker-url").value;
+  const proxyKey = document.getElementById("f-ai-proxy-key").value;
+  const useWebSearch = document.getElementById("f-ai-web-search").checked;
+
   try {
-    await saveSpotifyKeys(currentUser.uid, clientId, clientSecret);
-    setSpotifyStatus(true);
-    showToast("Spotify klíče uloženy");
+    if (clientId || clientSecret) {
+      if (!clientId || !clientSecret) {
+        showToast("Vyplň Client ID i Client Secret (Spotify)", true);
+        return;
+      }
+      await saveSpotifyKeys(currentUser.uid, clientId, clientSecret);
+      setSpotifyStatus(true);
+    }
+
+    if (workerUrl || proxyKey) {
+      if (!workerUrl || !proxyKey) {
+        showToast("Vyplň Worker URL i Proxy Secret (AI)", true);
+        return;
+      }
+      await saveAiSettings(currentUser.uid, { workerUrl, proxyKey, useWebSearch });
+      setAiStatus(true);
+    }
+
+    showToast("Nastavení uloženo");
     closeSettingsModal();
   } catch (err) {
-    showToast("Chyba při ukládání klíčů: " + err.message, true);
+    showToast("Chyba při ukládání nastavení: " + err.message, true);
   }
 });

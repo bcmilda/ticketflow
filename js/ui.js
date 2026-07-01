@@ -1,5 +1,6 @@
 // UI vykreslování — TicketFlow
 import { calcMargin, calcQueueRatio, dayOfWeekFromDate } from "./events.js";
+import { computeAttractivenessScore } from "./scoring.js";
 
 const STATUS_LABELS = {
   watching: "Sledováno",
@@ -46,6 +47,15 @@ function cardHTML(ev) {
       ? `<span class="badge badge-pop">♪ ${ev.spotify.popularity}</span>`
       : "";
 
+  const scoreResult = computeAttractivenessScore(ev);
+  const scoreBadge =
+    scoreResult.score != null
+      ? `<span class="badge" style="border-color:var(--accent-dim); color:var(--accent); font-weight:700;" title="${escapeHTML(scoreResult.label)} · spolehlivost ${scoreResult.completeness}%">${scoreResult.emoji} ${scoreResult.score}</span>`
+      : "";
+  const aiBadge = ev.aiAnalysis
+    ? `<span class="badge" style="border-color:#60a5fa; color:#60a5fa;" title="${escapeHTML(ev.aiAnalysis.reasoning || "")}">🤖 ${ev.aiAnalysis.score}</span>`
+    : "";
+
   return `
   <div class="stub" data-id="${ev.id}">
     <div class="stub-actions">
@@ -63,6 +73,8 @@ function cardHTML(ev) {
       </div>
       <div class="stub-badges">
         <span class="badge badge-status ${status}">${STATUS_LABELS[status] || status}</span>
+        ${scoreBadge}
+        ${aiBadge}
         ${popBadge}
         ${ev.capacity ? `<span class="badge">${Number(ev.capacity).toLocaleString("cs-CZ")} míst</span>` : ""}
         ${ev.ticketType ? `<span class="badge">${ticketTypeLabel(ev.ticketType)}</span>` : ""}
@@ -158,9 +170,12 @@ export function resetEventForm() {
   document.getElementById("event-form").reset();
   document.getElementById("f-dayOfWeek").value = "";
   hideSpotifyChip();
+  hideAiResult();
   document.getElementById("event-modal-title").textContent = "Nová událost";
   delete document.getElementById("event-form").dataset.editId;
   delete document.getElementById("event-form").dataset.spotifyData;
+  delete document.getElementById("event-form").dataset.aiAnalysis;
+  refreshAlgoScorePanel();
 }
 
 export function populateEventForm(ev) {
@@ -178,6 +193,15 @@ export function populateEventForm(ev) {
   } else {
     hideSpotifyChip();
   }
+
+  if (ev.aiAnalysis) {
+    document.getElementById("event-form").dataset.aiAnalysis = JSON.stringify(ev.aiAnalysis);
+    showAiResult(ev.aiAnalysis);
+  } else {
+    hideAiResult();
+  }
+
+  refreshAlgoScorePanel();
 }
 
 export function collectEventFormData() {
@@ -197,6 +221,10 @@ export function collectEventFormData() {
   if (spotifyRaw) {
     try { data.spotify = JSON.parse(spotifyRaw); } catch { /* ignore */ }
   }
+  const aiRaw = document.getElementById("event-form").dataset.aiAnalysis;
+  if (aiRaw) {
+    try { data.aiAnalysis = JSON.parse(aiRaw); } catch { /* ignore */ }
+  }
   return data;
 }
 
@@ -205,6 +233,85 @@ export function openEventModal() {
 }
 export function closeEventModal() {
   document.getElementById("event-modal").classList.remove("open");
+}
+
+// ---------------------------------------------
+// Algoritmické skóre (live panel v modalu)
+// ---------------------------------------------
+
+export function refreshAlgoScorePanel() {
+  const data = collectEventFormData();
+  const result = computeAttractivenessScore(data);
+  renderAlgoScore(result);
+  return result;
+}
+
+function renderAlgoScore(result) {
+  const circle = document.getElementById("algo-score-circle");
+  const valueEl = document.getElementById("algo-score-value");
+  const labelEl = document.getElementById("algo-score-label");
+  const complEl = document.getElementById("algo-score-completeness");
+
+  circle.className = "score-circle";
+  if (result.score == null) {
+    valueEl.textContent = "–";
+    labelEl.textContent = "Vyplň data níže";
+    complEl.textContent = "";
+    return;
+  }
+  valueEl.textContent = result.score;
+  circle.classList.add(scoreCircleClass(result.score));
+  labelEl.textContent = `${result.emoji} ${result.label}`;
+  complEl.textContent = `spolehlivost dat: ${result.completeness}%`;
+}
+
+function scoreCircleClass(score) {
+  if (score >= 75) return "s-high";
+  if (score >= 55) return "s-good";
+  if (score >= 35) return "s-mid";
+  return "s-low";
+}
+
+// ---------------------------------------------
+// AI výsledek panel
+// ---------------------------------------------
+
+export function showAiLoading() {
+  const el = document.getElementById("ai-result");
+  el.style.display = "block";
+  el.innerHTML = `<div class="ai-loading"><span class="spinner"></span> Claude analyzuje událost…</div>`;
+}
+
+export function showAiResult(result) {
+  const el = document.getElementById("ai-result");
+  el.style.display = "block";
+  const risksHTML = (result.risks || []).length
+    ? `<h4>Rizika</h4><ul>${result.risks.map((r) => `<li>${escapeHTML(r)}</li>`).join("")}</ul>`
+    : "";
+  const checksHTML = (result.additionalChecks || []).length
+    ? `<h4>Doplňkové kontroly</h4><ul>${result.additionalChecks.map((c) => `<li>${escapeHTML(c)}</li>`).join("")}</ul>`
+    : "";
+  el.innerHTML = `
+    <div class="ai-result-head">
+      <div><span class="ai-result-score">${result.score}</span> <span class="ai-result-label">${escapeHTML(result.label || "")}</span></div>
+      <span class="ai-confidence">jistota: ${result.confidence || "?"}</span>
+    </div>
+    <div class="ai-result-reasoning">${escapeHTML(result.reasoning || "")}</div>
+    ${risksHTML}
+    ${checksHTML}
+  `;
+}
+
+export function showAiError(message) {
+  const el = document.getElementById("ai-result");
+  el.style.display = "block";
+  el.innerHTML = `<div style="color:var(--negative);">⚠ ${escapeHTML(message)}</div>`;
+}
+
+export function hideAiResult() {
+  const el = document.getElementById("ai-result");
+  el.style.display = "none";
+  el.innerHTML = "";
 }
 
 // ---------------------------------------------
@@ -273,6 +380,13 @@ export function closeSettingsModal() {
 export function setSpotifyStatus(connected) {
   const badge = document.getElementById("spotify-status");
   const text = document.getElementById("spotify-status-text");
+  badge.classList.toggle("connected", connected);
+  text.textContent = connected ? "Připojeno" : "Nepřipojeno";
+}
+
+export function setAiStatus(connected) {
+  const badge = document.getElementById("ai-status");
+  const text = document.getElementById("ai-status-text");
   badge.classList.toggle("connected", connected);
   text.textContent = connected ? "Připojeno" : "Nepřipojeno";
 }
