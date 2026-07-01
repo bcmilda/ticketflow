@@ -151,6 +151,10 @@
           </div>
           <button type="button" class="btn btn-ghost btn-sm" id="ai-analyze-btn">🤖 Analyzovat pomocí AI</button>
         </div>
+        <div id="enrichment-bar" style="display:none; align-items:center; gap:10px; margin-bottom:16px; padding:10px 14px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:12.5px; color:var(--text-muted);">
+          <span class="spinner"></span>
+          <span id="enrichment-status">Načítám doplňující data…</span>
+        </div>
         <div class="ai-result" id="ai-result" style="display:none;"></div>
 
         <!-- Základní info -->
@@ -214,11 +218,24 @@
           <div class="section-title">Oblíbenost interpreta</div>
           <div class="field-grid cols-3">
             <div class="field">
+              <label>Věk interpreta</label>
+              <input type="number" id="f-artistAge" min="0" placeholder="např. 32" />
+            </div>
+            <div class="field">
+              <label>Cílová skupina</label>
+              <select id="f-targetAudience">
+                <option value="mixed">Smíšené</option>
+                <option value="teens">Teenageři</option>
+                <option value="young_adults">Mladí dospělí (20–35)</option>
+                <option value="older">Starší generace (35+)</option>
+              </select>
+            </div>
+            <div class="field">
               <label>Vyprodal předchozí turné?</label>
               <select id="f-soldOutPreviousTour">
                 <option value="unknown">Neznámo</option>
-                <option value="yes">Ano</option>
-                <option value="no">Ne</option>
+                <option value="yes">Ano ✅</option>
+                <option value="no">Ne ❌</option>
               </select>
             </div>
             <div class="field">
@@ -228,27 +245,34 @@
                 <option value="yes">Ano</option>
               </select>
             </div>
-            <div class="field">
-              <label>Věk interpreta</label>
-              <input type="number" id="f-artistAge" min="0" />
-            </div>
             <div class="field span-2">
-              <label>Poznámka k albu / žebříčkům</label>
-              <input type="text" id="f-newAlbumNote" placeholder="název alba, chart pozice…" />
+              <label>Název alba / singl</label>
+              <input type="text" id="f-newAlbumNote" placeholder="název alba nebo singl, rok vydání…" />
             </div>
             <div class="field">
-              <label>Cílová skupina</label>
-              <select id="f-targetAudience">
-                <option value="mixed">Smíšené</option>
-                <option value="teens">Teenageři</option>
-                <option value="young_adults">Mladí dospělí</option>
-                <option value="older">Starší generace</option>
+              <label>Počet koncertů / měsíc (tour)</label>
+              <input type="number" id="f-showCount" min="0" placeholder="např. 8" />
+            </div>
+            <div class="field">
+              <label>Pozice v žebříčku (top40-charts)</label>
+              <input type="number" id="f-chartPosition" min="1" max="200" placeholder="např. 15" />
+            </div>
+            <div class="field">
+              <label>Rotace v rádiích</label>
+              <select id="f-radioRotation">
+                <option value="unknown">Neznámo</option>
+                <option value="high">Vysoká (top rádio)</option>
+                <option value="medium">Střední</option>
+                <option value="low">Nízká / žádná</option>
               </select>
             </div>
-            <div class="field span-2" style="grid-column: 1 / -1;">
-              <label>Žebříčky / rádia / Songstats — poznámka</label>
-              <input type="text" id="f-chartNotes" placeholder="top40-charts pozice, rotace v rádiích…" />
-              <span class="hint">Zkontroluj ručně: songstats.com, top40-charts.com</span>
+            <div class="field" style="grid-column: 1 / -1;">
+              <label>Songstats / žebříčky — poznámka</label>
+              <input type="text" id="f-chartNotes" placeholder="Songstats skóre, chart pozice, virální trendy…" />
+              <span class="hint">
+                Zkontroluj: <a href="https://songstats.com" target="_blank" style="color:var(--accent);">songstats.com</a>
+                · <a href="https://top40-charts.com/charts.php?cid=31" target="_blank" style="color:var(--accent);">top40-charts.com</a>
+              </span>
             </div>
           </div>
         </div>

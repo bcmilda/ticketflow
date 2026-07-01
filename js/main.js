@@ -3,6 +3,7 @@ import { login, logout, watchAuth } from "./auth.js";
 import { watchEvents, createEvent, updateEvent, deleteEvent, dayOfWeekFromDate } from "./events.js";
 import { searchArtists, saveSpotifyKeys, getSpotifyKeys, hasSpotifyKeys } from "./spotify.js";
 import { saveTmKey, getTmKey, hasTmKey, searchEvents } from "./ticketmaster.js";
+import { enrichEvent } from "./enrichment.js";
 import { saveAiSettings, getAiSettings, hasAiSettings, runAiAnalysis } from "./ai.js";
 import {
   renderEvents, filterEvents, updateStats,
@@ -187,33 +188,127 @@ async function enrichWithSpotify(events) {
 }
 
 // -----------------------------------------------
-// Přidání akce ze Discovery do sledování
+// Přidání akce ze Discovery do sledování + enrichment
 // -----------------------------------------------
+
+function setEnrichmentBar(visible, text) {
+  const bar = document.getElementById("enrichment-bar");
+  const status = document.getElementById("enrichment-status");
+  bar.style.display = visible ? "flex" : "none";
+  if (text) status.textContent = text;
+}
 
 async function onAddEventFromDiscovery(tmEvent) {
   if (!currentUser) return;
 
-  // Předvyplň formulář daty z Ticketmaster + Spotify
+  // 1. Otevři modal s tím co máme z TM hned
   resetEventForm();
-  populateEventForm({
+
+  // Základní předvyplnění z TM dat
+  const baseData = {
     ...tmEvent,
     dayOfWeek: dayOfWeekFromDate(tmEvent.eventDate),
     purchasePrice: tmEvent.ticketPriceMin || null,
     targetSellPrice: null
-  });
+  };
+  populateEventForm(baseData);
 
   if (tmEvent.spotify) {
     showSpotifyChip(tmEvent.spotify);
     document.getElementById("event-form").dataset.spotifyData = JSON.stringify(tmEvent.spotify);
   }
-
-  // Ulož tmId pro deduplikaci
   document.getElementById("event-form").dataset.tmId = tmEvent.tmId;
 
   openEventModal();
+  setEnrichmentBar(true, "Načítám data o místě konání…");
   refreshAlgoScorePanel();
 
-  showToast(`„${tmEvent.artistName}" — zkontroluj a ulož do sledování`);
+  // 2. Spusť enrichment na pozadí
+  try {
+    setEnrichmentBar(true, "Hledám kapacitu arény a data o městě…");
+
+    // Enrichment běží paralelně
+    const enrichPromise = enrichEvent(currentUser.uid, tmEvent);
+
+    // Pokud nemáme Spotify data ještě (enrichment ze Discovery karty mohl proběhnout)
+    let spotifyData = tmEvent.spotify;
+    if (!spotifyData) {
+      setEnrichmentBar(true, "Načítám Spotify data o interpretovi…");
+      try {
+        const spotifyOk = await hasSpotifyKeys(currentUser.uid).catch(() => false);
+        if (spotifyOk) {
+          const results = await searchArtists(currentUser.uid, tmEvent.artistName, 1);
+          if (results.length) {
+            spotifyData = results[0];
+            showSpotifyChip(spotifyData);
+            document.getElementById("event-form").dataset.spotifyData = JSON.stringify(spotifyData);
+          }
+        }
+      } catch { /* Spotify nedostupné */ }
+    }
+
+    setEnrichmentBar(true, "Hledám konkurenční akce ve stejném termínu…");
+    const enriched = await enrichPromise;
+
+    // 3. Doplň obohacená data do formuláře
+    if (enriched.capacity) {
+      const capEl = document.getElementById("f-capacity");
+      if (capEl && !capEl.value) capEl.value = enriched.capacity;
+    }
+
+    if (enriched.cityPopulation) {
+      const popEl = document.getElementById("f-cityPopulation");
+      if (popEl && !popEl.value) popEl.value = enriched.cityPopulation;
+    }
+
+    if (enriched.countryWealth) {
+      const wealthEl = document.getElementById("f-countryWealth");
+      if (wealthEl && wealthEl.value === "medium") wealthEl.value = enriched.countryWealth;
+    }
+
+    if (enriched.localPopularity) {
+      const locEl = document.getElementById("f-localPopularity");
+      if (locEl && locEl.value === "medium") locEl.value = enriched.localPopularity;
+    }
+
+    if (enriched.competingEvents.length > 0) {
+      const compEl = document.getElementById("f-competingEvents");
+      if (compEl && !compEl.value) {
+        const list = enriched.competingEvents
+          .map((e) => `${e.name} (${e.date || "?"})`)
+          .join(", ");
+        compEl.value = list;
+      }
+    }
+
+    // Přidej Songstats odkaz do poznámky pokud prázdná
+    const chartEl = document.getElementById("f-chartNotes");
+    if (chartEl && !chartEl.value && tmEvent.artistName) {
+      const slug = tmEvent.artistName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      chartEl.placeholder = `Zkontroluj: songstats.com/artist/${slug}`;
+    }
+
+    setEnrichmentBar(false);
+    refreshAlgoScorePanel();
+
+    // Souhrn co bylo doplněno
+    const filled = [];
+    if (enriched.capacity) filled.push("kapacita arény");
+    if (enriched.cityPopulation) filled.push("obyvatelé města");
+    if (enriched.countryWealth) filled.push("bohatství země");
+    if (enriched.competingEvents.length) filled.push(`${enriched.competingEvents.length} konkurenční akce`);
+
+    if (filled.length) {
+      showToast(`✓ Doplněno automaticky: ${filled.join(", ")}`);
+    } else {
+      showToast(`„${tmEvent.artistName}" — doplň chybějící data a ulož`);
+    }
+
+  } catch (err) {
+    setEnrichmentBar(false);
+    console.warn("Enrichment chyba:", err);
+    showToast("Data o místě se nepodařilo načíst — vyplň ručně");
+  }
 }
 
 // -----------------------------------------------

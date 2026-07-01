@@ -159,9 +159,9 @@ export function updateStats(events) {
 const FIELD_IDS = [
   "artistName", "eventDate", "venueName", "capacity", "city", "country",
   "showCount", "status", "soldOutPreviousTour", "newAlbumRecent", "artistAge",
-  "newAlbumNote", "targetAudience", "chartNotes", "cityPopulation",
-  "countryWealth", "localPopularity", "competingEvents", "ticketType",
-  "purchasePrice", "targetSellPrice", "presaleSoldOut", "queueSize",
+  "newAlbumNote", "targetAudience", "chartNotes", "chartPosition", "radioRotation",
+  "cityPopulation", "countryWealth", "localPopularity", "competingEvents",
+  "ticketType", "purchasePrice", "targetSellPrice", "presaleSoldOut", "queueSize",
   "mapTicketsDisappearing", "secondaryMarketNote", "viagogoWatchers",
   "priceTrend", "cheapestPrice", "viagogoNote", "notes"
 ];
@@ -184,8 +184,14 @@ export function populateEventForm(ev) {
     if (el && ev[id] !== undefined && ev[id] !== null) el.value = ev[id];
   });
   document.getElementById("f-dayOfWeek").value = ev.dayOfWeek || dayOfWeekFromDate(ev.eventDate);
-  document.getElementById("event-modal-title").textContent = "Upravit událost";
-  document.getElementById("event-form").dataset.editId = ev.id;
+
+  if (ev.id) {
+    document.getElementById("event-modal-title").textContent = "Upravit událost";
+    document.getElementById("event-form").dataset.editId = ev.id;
+  } else {
+    document.getElementById("event-modal-title").textContent = "Nová událost — zkontroluj data";
+    delete document.getElementById("event-form").dataset.editId;
+  }
 
   if (ev.spotify) {
     showSpotifyChip(ev.spotify);

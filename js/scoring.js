@@ -27,9 +27,16 @@ function buildFactors(ev) {
 
   return [
     // --- Oblíbenost interpreta (35) ---
-    { category: "Oblíbenost interpreta", weight: 20, score: spotifyPop },
+    { category: "Oblíbenost interpreta", weight: 18, score: spotifyPop },
     { category: "Oblíbenost interpreta", weight: 10, score: scaleEnum(ev.soldOutPreviousTour, { yes: 100, no: 20 }) },
-    { category: "Oblíbenost interpreta", weight: 5, score: scaleEnum(ev.newAlbumRecent, { yes: 100, no: 50 }) },
+    { category: "Oblíbenost interpreta", weight: 4, score: scaleEnum(ev.newAlbumRecent, { yes: 100, no: 50 }) },
+    { category: "Oblíbenost interpreta", weight: 4, score: scaleEnum(ev.radioRotation, { high: 100, medium: 55, low: 15, unknown: null }) },
+    {
+      category: "Oblíbenost interpreta", weight: 4,
+      score: ev.chartPosition != null
+        ? Math.max(0, 100 - (Number(ev.chartPosition) - 1) * 1.5)
+        : null
+    },
 
     // --- Místo a trh (20) ---
     { category: "Místo a trh", weight: 10, score: scaleEnum(ev.localPopularity, { high: 100, medium: 55, low: 15 }) },
