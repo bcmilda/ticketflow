@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TicketFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="app-logo">Ticket<span>Flow</span></div>
+    <p style="color:var(--text-muted); font-size:13.5px; margin-top:10px;">
+      Datově podložené rozhodování pro reselling vstupenek
+    </p>
+    <button id="login-btn" class="btn btn-primary" style="margin-top:28px; width:100%; justify-content:center;">
+      Přihlásit se přes Google
+    </button>
+  </div>
+</div>
+
+<!-- ===================== APP SHELL ===================== -->
+<div id="app-shell">
+  <div class="topbar">
+    <div class="app-logo" style="font-size:24px;">Ticket<span>Flow</span></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <button id="settings-btn" class="icon-btn" title="Nastavení">⚙</button>
+      <span id="user-email" style="font-size:12.5px; color:var(--text-muted);"></span>
+      <button id="logout-btn" class="btn btn-ghost btn-sm">Odhlásit</button>
+    </div>
+  </div>
+
+  <div class="shell-inner">
+
+    <!-- Stat strip -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="eyebrow">Sledováno</div>
+        <div class="stat-value" id="stat-watching">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="eyebrow">Investováno</div>
+        <div class="stat-value" id="stat-invested">0 Kč</div>
+      </div>
+      <div class="stat-card">
+        <div class="eyebrow">Očekávaný zisk</div>
+        <div class="stat-value positive" id="stat-expected-profit">0 Kč</div>
+      </div>
+      <div class="stat-card">
+        <div class="eyebrow">Realizovaný zisk</div>
+        <div class="stat-value" id="stat-realized-profit">0 Kč</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <input type="text" id="search-input" placeholder="Hledat interpreta, místo…" />
+      <select id="status-filter">
+        <option value="all">Vše</option>
+        <option value="watching">Sledováno</option>
+        <option value="bought">Nakoupeno</option>
+        <option value="sold">Prodáno</option>
+        <option value="expired">Propadlo</option>
+      </select>
+      <div class="spacer"></div>
+      <button id="add-event-btn" class="btn btn-primary">+ Přidat událost</button>
+    </div>
+
+    <!-- Event grid -->
+    <div id="event-grid" class="event-grid"></div>
+    <div id="empty-state" class="empty-state" style="display:none;">
+      <div class="font-display">Zatím žádné události</div>
+      <p style="margin-top:6px;">Přidej první koncert nebo zápas, který chceš sledovat.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================== EVENT MODAL ===================== -->
+<div id="event-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="event-modal-title">Nová událost</div>
+      <button class="icon-btn" id="event-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="event-form">
+
+        <!-- Základní info -->
+        <div class="section-block">
+          <div class="section-title">Základní info</div>
+          <div class="field-grid">
+            <div class="field span-2 artist-search-wrap">
+              <label>Interpret / akce *</label>
+              <input type="text" id="f-artistName" required autocomplete="off" placeholder="např. Imagine Dragons" />
+              <div id="artist-suggestions" class="artist-suggestions"></div>
+              <div id="spotify-chip" class="spotify-chip">
+                <img id="sc-img" src="" alt="" />
+                <div>
+                  <div><strong id="sc-name"></strong> · <span class="sc-pop" id="sc-pop"></span> popularita</div>
+                  <div class="artist-suggestion-meta" id="sc-followers"></div>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Datum konání *</label>
+              <input type="date" id="f-eventDate" required />
+            </div>
+            <div class="field">
+              <label>Den v týdnu</label>
+              <input type="text" id="f-dayOfWeek" readonly placeholder="auto" />
+            </div>
+            <div class="field">
+              <label>Místo konání</label>
+              <input type="text" id="f-venueName" placeholder="např. O2 Arena" />
+            </div>
+            <div class="field">
+              <label>Kapacita arény</label>
+              <input type="number" id="f-capacity" min="0" />
+            </div>
+            <div class="field">
+              <label>Město</label>
+              <input type="text" id="f-city" />
+            </div>
+            <div class="field">
+              <label>Stát</label>
+              <input type="text" id="f-country" />
+            </div>
+            <div class="field">
+              <label>Počet koncertů (tour/město)</label>
+              <input type="number" id="f-showCount" min="0" />
+            </div>
+            <div class="field">
+              <label>Status</label>
+              <select id="f-status">
+                <option value="watching">Sledováno</option>
+                <option value="bought">Nakoupeno</option>
+                <option value="sold">Prodáno</option>
+                <option value="expired">Propadlo</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Oblíbenost interpreta -->
+        <div class="section-block">
+          <div class="section-title">Oblíbenost interpreta</div>
+          <div class="field-grid cols-3">
+            <div class="field">
+              <label>Vyprodal předchozí turné?</label>
+              <select id="f-soldOutPreviousTour">
+                <option value="unknown">Neznámo</option>
+                <option value="yes">Ano</option>
+                <option value="no">Ne</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Nové album nedávno?</label>
+              <select id="f-newAlbumRecent">
+                <option value="no">Ne</option>
+                <option value="yes">Ano</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Věk interpreta</label>
+              <input type="number" id="f-artistAge" min="0" />
+            </div>
+            <div class="field span-2">
+              <label>Poznámka k albu / žebříčkům</label>
+              <input type="text" id="f-newAlbumNote" placeholder="název alba, chart pozice…" />
+            </div>
+            <div class="field">
+              <label>Cílová skupina</label>
+              <select id="f-targetAudience">
+                <option value="mixed">Smíšené</option>
+                <option value="teens">Teenageři</option>
+                <option value="young_adults">Mladí dospělí</option>
+                <option value="older">Starší generace</option>
+              </select>
+            </div>
+            <div class="field span-2" style="grid-column: 1 / -1;">
+              <label>Žebříčky / rádia / Songstats — poznámka</label>
+              <input type="text" id="f-chartNotes" placeholder="top40-charts pozice, rotace v rádiích…" />
+              <span class="hint">Zkontroluj ručně: songstats.com, top40-charts.com</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Místo a trh -->
+        <div class="section-block">
+          <div class="section-title">Místo a trh</div>
+          <div class="field-grid cols-3">
+            <div class="field">
+              <label>Počet obyvatel města</label>
+              <input type="number" id="f-cityPopulation" min="0" />
+            </div>
+            <div class="field">
+              <label>Bohatství země</label>
+              <select id="f-countryWealth">
+                <option value="medium">Střední</option>
+                <option value="high">Vysoké</option>
+                <option value="low">Nízké</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Místní oblíbenost</label>
+              <select id="f-localPopularity">
+                <option value="medium">Střední</option>
+                <option value="high">Vysoká</option>
+                <option value="low">Nízká</option>
+              </select>
+            </div>
+            <div class="field" style="grid-column: 1 / -1;">
+              <label>Konkurenční akce ve stejný termín</label>
+              <input type="text" id="f-competingEvents" placeholder="jiný koncert, sportovní akce…" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Vstupenky -->
+        <div class="section-block">
+          <div class="section-title">Vstupenky</div>
+          <div class="field-grid cols-3">
+            <div class="field">
+              <label>Typ vstupenky</label>
+              <select id="f-ticketType">
+                <option value="standing">Stání</option>
+                <option value="seated">Sezení</option>
+                <option value="vip">VIP</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Nákupní cena (Kč)</label>
+              <input type="number" id="f-purchasePrice" min="0" step="1" />
+            </div>
+            <div class="field">
+              <label>Cílová prodejní cena (Kč)</label>
+              <input type="number" id="f-targetSellPrice" min="0" step="1" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Skutečný zájem -->
+        <div class="section-block">
+          <div class="section-title">Skutečný zájem</div>
+          <div class="field-grid cols-3">
+            <div class="field">
+              <label>Předprodej vyprodán?</label>
+              <select id="f-presaleSoldOut">
+                <option value="no">Ne</option>
+                <option value="partial">Částečně</option>
+                <option value="yes">Ano</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Velikost fronty (online)</label>
+              <input type="number" id="f-queueSize" min="0" />
+            </div>
+            <div class="field">
+              <label>Mizí lístky na mapě?</label>
+              <select id="f-mapTicketsDisappearing">
+                <option value="unknown">Neznámo</option>
+                <option value="yes">Ano</option>
+                <option value="no">Ne</option>
+              </select>
+            </div>
+            <div class="field" style="grid-column: 1 / -1;">
+              <label>Aktivita na sekundárním trhu</label>
+              <input type="text" id="f-secondaryMarketNote" placeholder="poznámka…" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Viagogo -->
+        <div class="section-block">
+          <div class="section-title">Viagogo sledování</div>
+          <div class="field-grid cols-3">
+            <div class="field">
+              <label>Počet sledujících</label>
+              <input type="number" id="f-viagogoWatchers" min="0" />
+            </div>
+            <div class="field">
+              <label>Trend ceny</label>
+              <select id="f-priceTrend">
+                <option value="stable">Stabilní</option>
+                <option value="up">Roste</option>
+                <option value="down">Klesá</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Nejlevnější lístek nyní (Kč)</label>
+              <input type="number" id="f-cheapestPrice" min="0" />
+            </div>
+            <div class="field" style="grid-column: 1 / -1;">
+              <label>Poznámka</label>
+              <input type="text" id="f-viagogoNote" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Poznámky -->
+        <div class="section-block">
+          <div class="section-title">Obecné poznámky</div>
+          <div class="field">
+            <textarea id="f-notes" rows="3" placeholder="cokoliv dalšího…"></textarea>
+          </div>
+        </div>
+
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="event-cancel-btn">Zrušit</button>
+      <button class="btn btn-primary" id="event-save-btn">Uložit událost</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SETTINGS MODAL ===================== -->
+<div id="settings-modal" class="modal-overlay">
+  <div class="modal" style="max-width: 480px;">
+    <div class="modal-header">
+      <div class="modal-title">Nastavení</div>
+      <button class="icon-btn" id="settings-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-title">Spotify API <span id="spotify-status" class="settings-status" style="margin-left:auto;"><span class="dot"></span><span id="spotify-status-text">Nepřipojeno</span></span></div>
+      <p style="font-size:12.5px; color:var(--text-muted); margin-top:0;">
+        Slouží k automatickému načtení popularity a fanouškovské základny interpretů. Klíče se ukládají do tvého Firestore účtu, ne natvrdo do kódu.
+      </p>
+      <div class="field" style="margin-top:14px;">
+        <label>Client ID</label>
+        <input type="text" id="f-spotify-client-id" autocomplete="off" />
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label>Client Secret</label>
+        <input type="password" id="f-spotify-client-secret" autocomplete="off" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="settings-cancel-btn">Zrušit</button>
+      <button class="btn btn-primary" id="settings-save-btn">Uložit klíče</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
