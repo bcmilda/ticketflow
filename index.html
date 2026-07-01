@@ -27,6 +27,10 @@
 <div id="app-shell">
   <div class="topbar">
     <div class="app-logo" style="font-size:24px;">Ticket<span>Flow</span></div>
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="discovery">🔍 Discovery</button>
+      <button class="tab-btn" data-tab="portfolio">📋 Moje akce</button>
+    </nav>
     <div style="display:flex; align-items:center; gap:10px;">
       <button id="settings-btn" class="icon-btn" title="Nastavení">⚙</button>
       <span id="user-email" style="font-size:12.5px; color:var(--text-muted);"></span>
@@ -36,47 +40,92 @@
 
   <div class="shell-inner">
 
-    <!-- Stat strip -->
-    <div class="stat-grid">
-      <div class="stat-card">
-        <div class="eyebrow">Sledováno</div>
-        <div class="stat-value" id="stat-watching">0</div>
+    <!-- ===== DISCOVERY TAB ===== -->
+    <div id="tab-discovery">
+
+      <!-- Filtry -->
+      <div class="discovery-filters">
+        <select id="disc-country">
+          <option value="CZ">🇨🇿 Česká republika</option>
+          <option value="SK">🇸🇰 Slovensko</option>
+          <option value="AT">🇦🇹 Rakousko</option>
+          <option value="DE">🇩🇪 Německo</option>
+          <option value="PL">🇵🇱 Polsko</option>
+          <option value="GB">🇬🇧 UK</option>
+          <option value="NL">🇳🇱 Nizozemsko</option>
+          <option value="HU">🇭🇺 Maďarsko</option>
+        </select>
+        <select id="disc-segment">
+          <option value="Music">🎵 Hudba</option>
+          <option value="Sports">⚽ Sport</option>
+          <option value="">Vše</option>
+        </select>
+        <input type="text" id="disc-keyword" placeholder="Interpret / akce…" style="flex:1; min-width:160px;" />
+        <button class="btn btn-primary" id="disc-search-btn">Hledat</button>
       </div>
-      <div class="stat-card">
-        <div class="eyebrow">Investováno</div>
-        <div class="stat-value" id="stat-invested">0 Kč</div>
+
+      <!-- Výsledky -->
+      <div id="disc-results" class="disc-grid"></div>
+      <div id="disc-empty" class="empty-state" style="display:none;">
+        <div class="font-display">Žádné výsledky</div>
+        <p>Zkus jiný filtr nebo klíčové slovo.</p>
       </div>
-      <div class="stat-card">
-        <div class="eyebrow">Očekávaný zisk</div>
-        <div class="stat-value positive" id="stat-expected-profit">0 Kč</div>
+      <div id="disc-loading" class="empty-state" style="display:none;">
+        <div class="ai-loading" style="justify-content:center;"><span class="spinner"></span> Načítám akce…</div>
       </div>
-      <div class="stat-card">
-        <div class="eyebrow">Realizovaný zisk</div>
-        <div class="stat-value" id="stat-realized-profit">0 Kč</div>
+      <div id="disc-pagination" class="disc-pagination" style="display:none;">
+        <button class="btn btn-ghost btn-sm" id="disc-prev">← Předchozí</button>
+        <span id="disc-page-info" style="font-size:12.5px; color:var(--text-muted);"></span>
+        <button class="btn btn-ghost btn-sm" id="disc-next">Další →</button>
       </div>
+
     </div>
 
-    <!-- Toolbar -->
-    <div class="toolbar">
-      <input type="text" id="search-input" placeholder="Hledat interpreta, místo…" />
-      <select id="status-filter">
-        <option value="all">Vše</option>
-        <option value="watching">Sledováno</option>
-        <option value="bought">Nakoupeno</option>
-        <option value="sold">Prodáno</option>
-        <option value="expired">Propadlo</option>
-      </select>
-      <div class="spacer"></div>
-      <button id="add-event-btn" class="btn btn-primary">+ Přidat událost</button>
-    </div>
+    <!-- ===== PORTFOLIO TAB ===== -->
+    <div id="tab-portfolio" style="display:none;">
 
-    <!-- Event grid -->
-    <div id="event-grid" class="event-grid"></div>
-    <div id="empty-state" class="empty-state" style="display:none;">
-      <div class="font-display">Zatím žádné události</div>
-      <p style="margin-top:6px;">Přidej první koncert nebo zápas, který chceš sledovat.</p>
-    </div>
+      <!-- Stat strip -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="eyebrow">Sledováno</div>
+          <div class="stat-value" id="stat-watching">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="eyebrow">Investováno</div>
+          <div class="stat-value" id="stat-invested">0 Kč</div>
+        </div>
+        <div class="stat-card">
+          <div class="eyebrow">Očekávaný zisk</div>
+          <div class="stat-value positive" id="stat-expected-profit">0 Kč</div>
+        </div>
+        <div class="stat-card">
+          <div class="eyebrow">Realizovaný zisk</div>
+          <div class="stat-value" id="stat-realized-profit">0 Kč</div>
+        </div>
+      </div>
 
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <input type="text" id="search-input" placeholder="Hledat interpreta, místo…" />
+        <select id="status-filter">
+          <option value="all">Vše</option>
+          <option value="watching">Sledováno</option>
+          <option value="bought">Nakoupeno</option>
+          <option value="sold">Prodáno</option>
+          <option value="expired">Propadlo</option>
+        </select>
+        <div class="spacer"></div>
+        <button id="add-event-btn" class="btn btn-ghost">+ Přidat ručně</button>
+      </div>
+
+      <!-- Event grid -->
+      <div id="event-grid" class="event-grid"></div>
+      <div id="empty-state" class="empty-state" style="display:none;">
+        <div class="font-display">Zatím žádné akce</div>
+        <p style="margin-top:6px;">Najdi akci v Discovery nebo přidej ručně.</p>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -341,7 +390,16 @@
       <button class="icon-btn" id="settings-modal-close">✕</button>
     </div>
     <div class="modal-body">
-      <div class="section-title">Spotify API <span id="spotify-status" class="settings-status" style="margin-left:auto;"><span class="dot"></span><span id="spotify-status-text">Nepřipojeno</span></span></div>
+      <div class="section-title">Ticketmaster API <span id="tm-status" class="settings-status" style="margin-left:auto;"><span class="dot"></span><span id="tm-status-text">Nepřipojeno</span></span></div>
+      <p style="font-size:12.5px; color:var(--text-muted); margin-top:0;">
+        Slouží k načítání seznamu koncertů a sportovních akcí v Discovery tabu. Consumer Key z developer.ticketmaster.com (zdarma).
+      </p>
+      <div class="field" style="margin-top:14px;">
+        <label>Consumer Key (API klíč)</label>
+        <input type="text" id="f-tm-api-key" autocomplete="off" />
+      </div>
+
+      <div class="section-title" style="margin-top:26px;">Spotify API <span id="spotify-status" class="settings-status" style="margin-left:auto;"><span class="dot"></span><span id="spotify-status-text">Nepřipojeno</span></span></div>
       <p style="font-size:12.5px; color:var(--text-muted); margin-top:0;">
         Slouží k automatickému načtení popularity a fanouškovské základny interpretů. Klíče se ukládají do tvého Firestore účtu, ne natvrdo do kódu.
       </p>
