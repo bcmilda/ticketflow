@@ -48,16 +48,16 @@ function cardHTML(ev) {
       : "";
 
   const scoreResult = computeAttractivenessScore(ev);
-  const scoreBadge =
-    scoreResult.score != null
-      ? `<span class="badge" style="border-color:var(--accent-dim); color:var(--accent); font-weight:700;" title="${escapeHTML(scoreResult.label)} · spolehlivost ${scoreResult.completeness}%">${scoreResult.emoji} ${scoreResult.score}</span>`
-      : "";
   const aiBadge = ev.aiAnalysis
     ? `<span class="badge" style="border-color:#60a5fa; color:#60a5fa;" title="${escapeHTML(ev.aiAnalysis.reasoning || "")}">🤖 ${ev.aiAnalysis.score}</span>`
     : "";
 
+  // --- Rentabilita: kombinuje ROI % a skóre atraktivity do jednoho verdiktu ---
+  const rent = computeRentability(ev, scoreResult, margin);
+
   return `
-  <div class="stub" data-id="${ev.id}">
+  <div class="stub rent-${rent.tier}" data-id="${ev.id}">
+    <div class="stub-rail" title="${escapeHTML(rent.label)}"></div>
     <div class="stub-actions">
       <button data-action="edit" data-id="${ev.id}" title="Upravit">✎</button>
       <button data-action="delete" data-id="${ev.id}" title="Smazat">🗑</button>
@@ -73,31 +73,52 @@ function cardHTML(ev) {
       </div>
       <div class="stub-badges">
         <span class="badge badge-status ${status}">${STATUS_LABELS[status] || status}</span>
-        ${scoreBadge}
+        ${scoreResult.score != null ? `<span class="badge" style="border-color:var(--accent-dim); color:var(--accent); font-weight:700;" title="Atraktivita: ${escapeHTML(scoreResult.label)} · spolehlivost dat ${scoreResult.completeness}%">${scoreResult.emoji} ${scoreResult.score}</span>` : ""}
         ${aiBadge}
         ${popBadge}
         ${ev.capacity ? `<span class="badge">${Number(ev.capacity).toLocaleString("cs-CZ")} míst</span>` : ""}
-        ${ev.ticketType ? `<span class="badge">${ticketTypeLabel(ev.ticketType)}</span>` : ""}
       </div>
     </div>
     <div class="stub-divider"></div>
     <div class="stub-numbers">
-      <div class="stub-price-row">
-        <span class="stub-price-label">Nákup</span>
-        <span class="stub-price-value">${fmtMoney(ev.purchasePrice)}</span>
+      <div class="rent-verdict rent-text-${rent.tier}">
+        <span class="rent-emoji">${rent.emoji}</span>
+        <span class="rent-roi">${rent.roiText}</span>
+        <span class="rent-label">${rent.label}</span>
       </div>
-      <div class="stub-price-row">
-        <span class="stub-price-label">Cíl</span>
-        <span class="stub-price-value">${fmtMoney(ev.targetSellPrice)}</span>
-      </div>
-      <div class="stub-price-row">
-        <span class="stub-price-label">Marže</span>
-        <span class="stub-price-value stub-margin ${marginClass}">
-          ${margin.abs >= 0 ? "+" : ""}${fmtMoney(margin.abs)}
-        </span>
+      <div class="stub-price-mini">
+        <span>${fmtMoney(ev.purchasePrice)} → ${fmtMoney(ev.targetSellPrice)}</span>
+        <span class="stub-margin ${marginClass}">${margin.abs >= 0 ? "+" : ""}${fmtMoney(margin.abs)}</span>
       </div>
     </div>
   </div>`;
+}
+
+// Rentabilita = spojení ROI (zisk %) a skóre atraktivity do jednoho verdiktu
+function computeRentability(ev, scoreResult, margin) {
+  const purchase = Number(ev.purchasePrice) || 0;
+  const roiPct = purchase > 0 ? (margin.abs / purchase) * 100 : null;
+  const score = scoreResult.score;
+
+  // Text ROI
+  let roiText;
+  if (roiPct == null) roiText = "ROI —";
+  else roiText = `${roiPct >= 0 ? "+" : ""}${Math.round(roiPct)} %`;
+
+  // Když nemáme ceny, řídíme se jen skóre
+  if (roiPct == null) {
+    if (score == null) return { tier: "unknown", emoji: "•", label: "Doplň data", roiText: "ROI —" };
+    if (score >= 70) return { tier: "high", emoji: "🔥", label: "Zajímavé (bez cen)", roiText: "ROI —" };
+    if (score >= 50) return { tier: "mid", emoji: "⚠️", label: "Průměr (bez cen)", roiText: "ROI —" };
+    return { tier: "low", emoji: "❌", label: "Slabé (bez cen)", roiText: "ROI —" };
+  }
+
+  // Máme ROI i skóre → kombinovaný verdikt
+  const s = score ?? 50;
+  if (roiPct >= 40 && s >= 60) return { tier: "high", emoji: "🔥", label: "Vysoká rentabilita", roiText };
+  if (roiPct >= 20 && s >= 45) return { tier: "good", emoji: "✅", label: "Dobrá rentabilita", roiText };
+  if (roiPct >= 0) return { tier: "mid", emoji: "⚠️", label: "Nízká marže", roiText };
+  return { tier: "low", emoji: "❌", label: "Ztrátové", roiText };
 }
 
 function ticketTypeLabel(t) {
@@ -157,10 +178,12 @@ export function updateStats(events) {
 // ---------------------------------------------
 
 const FIELD_IDS = [
-  "artistName", "eventDate", "venueName", "capacity", "city", "country",
+  "artistName", "eventDate", "eventTime", "venueName", "capacity", "city", "country",
   "showCount", "status", "soldOutPreviousTour", "newAlbumRecent", "artistAge",
   "newAlbumNote", "targetAudience", "chartNotes", "chartPosition", "radioRotation",
   "cityPopulation", "countryWealth", "localPopularity", "competingEvents",
+  "priceStandingMin", "priceStandingMax", "priceSeatedMin", "priceSeatedMax",
+  "priceVipMin", "priceVipMax",
   "ticketType", "purchasePrice", "targetSellPrice", "presaleSoldOut", "queueSize",
   "mapTicketsDisappearing", "secondaryMarketNote", "viagogoWatchers",
   "priceTrend", "cheapestPrice", "viagogoNote", "notes"

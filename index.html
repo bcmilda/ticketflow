@@ -30,6 +30,8 @@
     <nav class="tab-nav">
       <button class="tab-btn active" data-tab="discovery">🔍 Discovery</button>
       <button class="tab-btn" data-tab="portfolio">📋 Moje akce</button>
+      <button class="tab-btn" data-tab="artists">🎤 Interpreti</button>
+      <button class="tab-btn" data-tab="markets">🌍 Trhy</button>
     </nav>
     <div style="display:flex; align-items:center; gap:10px;">
       <button id="settings-btn" class="icon-btn" title="Nastavení">⚙</button>
@@ -46,18 +48,42 @@
       <!-- Filtry -->
       <div class="discovery-filters">
         <select id="disc-country">
-          <option value="CZ">🇨🇿 Česká republika</option>
-          <option value="SK">🇸🇰 Slovensko</option>
-          <option value="AT">🇦🇹 Rakousko</option>
-          <option value="DE">🇩🇪 Německo</option>
-          <option value="PL">🇵🇱 Polsko</option>
-          <option value="GB">🇬🇧 UK</option>
-          <option value="NL">🇳🇱 Nizozemsko</option>
-          <option value="HU">🇭🇺 Maďarsko</option>
+          <optgroup label="Střední Evropa">
+            <option value="CZ">🇨🇿 Česká republika</option>
+            <option value="SK">🇸🇰 Slovensko</option>
+            <option value="AT">🇦🇹 Rakousko</option>
+            <option value="DE">🇩🇪 Německo</option>
+            <option value="PL">🇵🇱 Polsko</option>
+            <option value="HU">🇭🇺 Maďarsko</option>
+            <option value="CH">🇨🇭 Švýcarsko</option>
+          </optgroup>
+          <optgroup label="Západní Evropa">
+            <option value="GB">🇬🇧 Velká Británie</option>
+            <option value="IE">🇮🇪 Irsko</option>
+            <option value="NL">🇳🇱 Nizozemsko</option>
+            <option value="BE">🇧🇪 Belgie</option>
+            <option value="FR">🇫🇷 Francie</option>
+            <option value="ES">🇪🇸 Španělsko</option>
+            <option value="PT">🇵🇹 Portugalsko</option>
+            <option value="IT">🇮🇹 Itálie</option>
+          </optgroup>
+          <optgroup label="Severní Evropa">
+            <option value="SE">🇸🇪 Švédsko</option>
+            <option value="NO">🇳🇴 Norsko</option>
+            <option value="DK">🇩🇰 Dánsko</option>
+            <option value="FI">🇫🇮 Finsko</option>
+          </optgroup>
+          <optgroup label="Zámoří">
+            <option value="US">🇺🇸 USA</option>
+            <option value="CA">🇨🇦 Kanada</option>
+            <option value="AU">🇦🇺 Austrálie</option>
+            <option value="MX">🇲🇽 Mexiko</option>
+          </optgroup>
         </select>
         <select id="disc-segment">
           <option value="Music">🎵 Hudba</option>
           <option value="Sports">⚽ Sport</option>
+          <option value="Arts & Theatre">🎭 Divadlo</option>
           <option value="">Vše</option>
         </select>
         <input type="text" id="disc-keyword" placeholder="Interpret / akce…" style="flex:1; min-width:160px;" />
@@ -126,6 +152,75 @@
       </div>
 
     </div>
+
+    <!-- ===== ARTISTS TAB ===== -->
+    <div id="tab-artists" style="display:none;">
+      <div class="toolbar">
+        <div class="artist-search-wrap" style="flex:1; position:relative;">
+          <input type="text" id="artist-add-input" placeholder="Najdi interpreta na Spotify a přidej do žebříčku…" autocomplete="off" style="width:100%;" />
+          <div id="artist-add-suggestions" class="artist-suggestions"></div>
+        </div>
+        <button class="btn btn-ghost" id="artists-refresh-btn" title="Aktualizovat Spotify metriky">🔄 Aktualizovat data</button>
+      </div>
+
+      <div id="artists-table-wrap">
+        <table class="artists-table" id="artists-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th></th>
+              <th>Interpret</th>
+              <th class="num sortable" data-sort="popularity">Popularita ▾</th>
+              <th class="num sortable" data-sort="followers">Followers</th>
+              <th>Žánr</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="artists-tbody"></tbody>
+        </table>
+        <div id="artists-empty" class="empty-state" style="display:none;">
+          <div class="font-display">Zatím žádní interpreti</div>
+          <p style="margin-top:6px;">Najdi interpreta výše a přidej ho do žebříčku podle oblíbenosti.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MARKETS TAB ===== -->
+    <div id="tab-markets" style="display:none;">
+      <p style="color:var(--text-muted); font-size:13px; margin-bottom:20px;">
+        Přehled trhů podle bohatství a kupní síly — pomáhá odhadnout, kde lidé utratí za vstupenky nejvíc.
+        Data: World Bank (HDP), World Happiness Report 2024, Numbeo (kupní síla).
+      </p>
+      <table class="artists-table" id="markets-table">
+        <thead>
+          <tr>
+            <th>Země</th>
+            <th class="num sortable" data-msort="gdp">HDP/obyv. ▾</th>
+            <th class="num sortable" data-msort="purchasingPower">Kupní síla</th>
+            <th class="num sortable" data-msort="happiness">Spokojenost</th>
+            <th class="num sortable" data-msort="market">Market skóre</th>
+          </tr>
+        </thead>
+        <tbody id="markets-tbody"></tbody>
+      </table>
+
+      <div class="eyebrow" style="margin:32px 0 12px;">Města a arény v databázi</div>
+      <div class="toolbar" style="margin-bottom:14px;">
+        <input type="text" id="cities-search" placeholder="Filtrovat město…" />
+      </div>
+      <table class="artists-table" id="cities-table">
+        <thead>
+          <tr>
+            <th>Město</th>
+            <th>Země</th>
+            <th class="num sortable" data-csort="population">Obyvatel ▾</th>
+            <th>Hlavní aréna</th>
+            <th class="num sortable" data-csort="venueCapacity">Kapacita</th>
+          </tr>
+        </thead>
+        <tbody id="cities-tbody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -156,6 +251,17 @@
           <span id="enrichment-status">Načítám doplňující data…</span>
         </div>
         <div class="ai-result" id="ai-result" style="display:none;"></div>
+
+        <!-- Turné info panel -->
+        <div id="tour-panel" style="display:none; margin-bottom:22px; padding:14px 16px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius);">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+            <div class="eyebrow">🎤 Analýza turné</div>
+            <button type="button" class="btn btn-ghost btn-sm" id="tour-refresh-btn">Načíst</button>
+          </div>
+          <div id="tour-content" style="font-size:12.5px; color:var(--text-muted);">
+            Klikni „Načíst" pro přehled celého turné interpreta.
+          </div>
+        </div>
 
         <!-- Základní info -->
         <div class="section-block">
@@ -198,8 +304,8 @@
               <input type="text" id="f-country" />
             </div>
             <div class="field">
-              <label>Počet koncertů (tour/město)</label>
-              <input type="number" id="f-showCount" min="0" />
+              <label>Čas začátku</label>
+              <input type="text" id="f-eventTime" placeholder="19:00" />
             </div>
             <div class="field">
               <label>Status</label>
@@ -310,10 +416,49 @@
 
         <!-- Vstupenky -->
         <div class="section-block">
-          <div class="section-title">Vstupenky</div>
+          <div class="section-title">Vstupenky — cenová rozpětí</div>
+          <p style="font-size:11.5px; color:var(--text-faint); margin:-4px 0 12px;">
+            Nominální ceny z primárního prodeje. Ticketmaster je doplní automaticky, pokud jsou u akce zveřejněné —
+            u části evropských akcí je bohužel API neuvádí vůbec.
+            <a id="tm-price-link" href="#" target="_blank" style="display:none; color:var(--accent);">Zkontrolovat ceny na Ticketmaster →</a>
+          </p>
           <div class="field-grid cols-3">
             <div class="field">
-              <label>Typ vstupenky</label>
+              <label>Stání — od (Kč)</label>
+              <input type="number" id="f-priceStandingMin" min="0" step="1" />
+            </div>
+            <div class="field">
+              <label>Stání — do (Kč)</label>
+              <input type="number" id="f-priceStandingMax" min="0" step="1" />
+            </div>
+            <div class="field"></div>
+            <div class="field">
+              <label>Sezení — od (Kč)</label>
+              <input type="number" id="f-priceSeatedMin" min="0" step="1" />
+            </div>
+            <div class="field">
+              <label>Sezení — do (Kč)</label>
+              <input type="number" id="f-priceSeatedMax" min="0" step="1" />
+            </div>
+            <div class="field"></div>
+            <div class="field">
+              <label>VIP — od (Kč)</label>
+              <input type="number" id="f-priceVipMin" min="0" step="1" />
+            </div>
+            <div class="field">
+              <label>VIP — do (Kč)</label>
+              <input type="number" id="f-priceVipMax" min="0" step="1" />
+            </div>
+            <div class="field"></div>
+          </div>
+        </div>
+
+        <!-- Můj obchod -->
+        <div class="section-block">
+          <div class="section-title">Můj obchod (resell)</div>
+          <div class="field-grid cols-3">
+            <div class="field">
+              <label>Typ vstupenky co kupuji</label>
               <select id="f-ticketType">
                 <option value="standing">Stání</option>
                 <option value="seated">Sezení</option>
@@ -422,19 +567,23 @@
         <label>Consumer Key (API klíč)</label>
         <input type="text" id="f-tm-api-key" autocomplete="off" />
       </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="test-enrichment-btn" style="margin-top:10px;">🔬 Otestovat auto-doplňování</button>
+      <div id="enrichment-test-result" style="display:none; margin-top:10px; font-size:12px; font-family:var(--font-mono); padding:10px; background:var(--surface-2); border-radius:var(--radius-sm); white-space:pre-line;"></div>
 
       <div class="section-title" style="margin-top:26px;">Spotify API <span id="spotify-status" class="settings-status" style="margin-left:auto;"><span class="dot"></span><span id="spotify-status-text">Nepřipojeno</span></span></div>
       <p style="font-size:12.5px; color:var(--text-muted); margin-top:0;">
-        Slouží k automatickému načtení popularity a fanouškovské základny interpretů. Klíče se ukládají do tvého Firestore účtu, ne natvrdo do kódu.
+        Slouží k automatickému načtení popularity a fanouškovské základny interpretů. Běží přes vlastní Cloudflare Worker proxy (Spotify Client Credentials nejde spolehlivě volat přímo z prohlížeče) — viz README → cloudflare-worker/ticketflow-spotify-proxy.js.
       </p>
       <div class="field" style="margin-top:14px;">
-        <label>Client ID</label>
-        <input type="text" id="f-spotify-client-id" autocomplete="off" />
+        <label>Worker URL</label>
+        <input type="text" id="f-spotify-worker-url" autocomplete="off" placeholder="https://ticketflow-spotify-proxy.tvuj-subdomain.workers.dev" />
       </div>
       <div class="field" style="margin-top:10px;">
-        <label>Client Secret</label>
-        <input type="password" id="f-spotify-client-secret" autocomplete="off" />
+        <label>Proxy Secret</label>
+        <input type="password" id="f-spotify-proxy-key" autocomplete="off" />
       </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="test-spotify-btn" style="margin-top:10px;">🔬 Otestovat Spotify proxy</button>
+      <div id="spotify-test-result" style="display:none; margin-top:10px; font-size:12px; font-family:var(--font-mono); padding:10px; background:var(--surface-2); border-radius:var(--radius-sm); white-space:pre-line;"></div>
 
       <div class="section-title" style="margin-top:26px;">AI analýza (Claude) <span id="ai-status" class="settings-status" style="margin-left:auto;"><span class="dot"></span><span id="ai-status-text">Nepřipojeno</span></span></div>
       <p style="font-size:12.5px; color:var(--text-muted); margin-top:0;">

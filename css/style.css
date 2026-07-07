@@ -320,22 +320,68 @@ a { color: inherit; }
 .stub-divider::before { top: -8px; }
 .stub-divider::after { bottom: -8px; }
 
+/* Barevný levý pruh podle rentability */
+.stub-rail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--border);
+}
+.rent-high .stub-rail { background: var(--positive); }
+.rent-good .stub-rail { background: #4ade80; }
+.rent-mid .stub-rail { background: #f59e0b; }
+.rent-low .stub-rail { background: var(--negative); }
+.rent-unknown .stub-rail { background: var(--border); }
+
 .stub-numbers {
-  padding: 16px 14px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   font-family: var(--font-mono);
 }
-.stub-price-row { display: flex; flex-direction: column; }
-.stub-price-label {
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
+
+/* Rentabilita verdikt — hlavní ukazatel */
+.rent-verdict {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1px;
+}
+.rent-emoji { font-size: 18px; line-height: 1; }
+.rent-roi {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.rent-label {
+  font-size: 9px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-faint);
+  font-family: var(--font-body);
+  font-weight: 600;
 }
-.stub-price-value { font-size: 15px; font-weight: 600; }
+.rent-text-high .rent-roi, .rent-text-good .rent-roi { color: var(--positive); }
+.rent-text-mid .rent-roi { color: #f59e0b; }
+.rent-text-low .rent-roi { color: var(--negative); }
+.rent-text-unknown .rent-roi { color: var(--text-faint); font-size: 15px; }
+
+.stub-price-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-soft);
+  padding-top: 8px;
+}
+.stub-price-mini .stub-margin { font-weight: 700; font-size: 12px; }
 .stub-margin.positive { color: var(--positive); }
 .stub-margin.negative { color: var(--negative); }
 
@@ -345,24 +391,26 @@ a { color: inherit; }
   right: 8px;
   display: flex;
   gap: 4px;
-  opacity: 0;
+  opacity: 0.55;
   transition: opacity 0.15s ease;
+  z-index: 5;
 }
 .stub:hover .stub-actions { opacity: 1; }
 .stub-actions button {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.stub-actions button:hover { color: var(--text); border-color: var(--neutral); }
+.stub-actions button:hover { color: var(--text); border-color: var(--neutral); background: var(--surface); }
+.stub-actions button:active { transform: scale(0.92); }
 
 .empty-state {
   text-align: center;
@@ -559,8 +607,113 @@ a { color: inherit; }
 .toast.error { border-color: var(--negative); color: var(--negative); }
 
 /* ============================================
-   Tab navigace
+   Tabulky (Interpreti, Trhy)
    ============================================ */
+.artists-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.artists-table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.artists-table th.num { text-align: right; }
+.artists-table th.sortable { cursor: pointer; user-select: none; }
+.artists-table th.sortable:hover { color: var(--text); }
+
+.artists-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+}
+.artists-table tbody tr:hover { background: var(--surface); }
+.artists-table td.num {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.artist-rank {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+.artist-rank.top { color: var(--accent); }
+
+.artist-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+.artist-name-cell { font-weight: 600; font-size: 14px; }
+.artist-name-cell a { color: inherit; text-decoration: none; }
+.artist-name-cell a:hover { color: var(--accent); }
+
+.pop-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.pop-bar-track {
+  width: 50px;
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.pop-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+
+.genre-tag {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.table-del-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+.table-del-btn:hover { color: var(--negative); background: var(--negative-soft); }
+
+.market-flag { font-size: 16px; margin-right: 8px; }
+.market-score-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 12px;
+}
+.market-high { background: var(--positive-soft); color: var(--positive); }
+.market-mid { background: var(--accent-soft); color: var(--accent); }
+.market-low { background: rgba(154,152,163,0.12); color: var(--text-muted); }
+
+@media (max-width: 640px) {
+  .artists-table { font-size: 12px; }
+  .artists-table thead th, .artists-table tbody td { padding: 8px 6px; }
+  .hide-mobile { display: none; }
+}
 .tab-nav {
   display: flex;
   gap: 4px;

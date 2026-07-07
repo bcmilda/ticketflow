@@ -1,23 +1,18 @@
 // Spotify integrace — TicketFlow
-// Používá Client Credentials Flow (veřejná data o interpretech, žádný uživatelský souhlas potřeba)
+// Volá se přes Cloudflare Worker proxy (viz cloudflare-worker/ticketflow-spotify-proxy.js).
+// Client Credentials Flow je server-to-server a Spotify ho z prohlížeče přes CORS
+// spolehlivě nepovoluje — proto token exchange i vyhledávání běží na Workeru, ne tady.
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db } from "./firebase-config.js";
 
-const TOKEN_URL = "https://accounts.spotify.com/api/token";
-const API_BASE = "https://api.spotify.com/v1";
+// --- Uložení / načtení nastavení proxy (Worker URL + shared secret) ---
 
-let cachedToken = null;
-let tokenExpiresAt = 0;
-
-// --- Uložení / načtení klíčů ze settings (Firestore) ---
-
-export async function saveSpotifyKeys(uid, clientId, clientSecret) {
+export async function saveSpotifyKeys(uid, workerUrl, proxyKey) {
   await setDoc(doc(db, "users", uid, "settings", "spotify"), {
-    clientId: clientId.trim(),
-    clientSecret: clientSecret.trim(),
+    workerUrl: workerUrl.trim(),
+    proxyKey: proxyKey.trim(),
     updatedAt: new Date().toISOString()
   });
-  cachedToken = null; // vynutí nové přihlášení s novými klíči
 }
 
 export async function getSpotifyKeys(uid) {
@@ -27,73 +22,41 @@ export async function getSpotifyKeys(uid) {
 
 export async function hasSpotifyKeys(uid) {
   const keys = await getSpotifyKeys(uid);
-  return !!(keys && keys.clientId && keys.clientSecret);
+  return !!(keys && keys.workerUrl && keys.proxyKey);
 }
 
-// --- Token management ---
+// --- API volání přes proxy ---
 
-async function getAccessToken(uid) {
-  const now = Date.now();
-  if (cachedToken && now < tokenExpiresAt) return cachedToken;
-
-  const keys = await getSpotifyKeys(uid);
-  if (!keys || !keys.clientId || !keys.clientSecret) {
+async function callProxy(uid, params) {
+  const settings = await getSpotifyKeys(uid);
+  if (!settings || !settings.workerUrl || !settings.proxyKey) {
     throw new Error("NO_KEYS");
   }
-
-  const basic = btoa(`${keys.clientId}:${keys.clientSecret}`);
-  const res = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: `Basic ${basic}`
-    },
-    body: "grant_type=client_credentials"
-  });
-
-  if (!res.ok) {
-    throw new Error("AUTH_FAILED");
+  const url = `${settings.workerUrl}?${params}`;
+  let res;
+  try {
+    res = await fetch(url, { headers: { "X-Proxy-Key": settings.proxyKey } });
+  } catch (err) {
+    throw new Error("PROXY_NETWORK_ERROR: " + err.message);
   }
-
-  const data = await res.json();
-  cachedToken = data.access_token;
-  // o 60s dříve, ať nevypršíme uprostřed requestu
-  tokenExpiresAt = now + (data.expires_in - 60) * 1000;
-  return cachedToken;
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`PROXY_ERROR (${res.status}): ${text.slice(0, 200)}`);
+  }
+  return res.json();
 }
-
-// --- API volání ---
 
 export async function searchArtists(uid, query, limit = 5) {
   if (!query || query.trim().length < 2) return [];
-  const token = await getAccessToken(uid);
-  const url = `${API_BASE}/search?q=${encodeURIComponent(query)}&type=artist&limit=${limit}`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!res.ok) throw new Error("SEARCH_FAILED");
-  const data = await res.json();
-  return (data.artists?.items || []).map(mapArtist);
+  const params = new URLSearchParams({ action: "search", q: query, limit: String(limit) });
+  const data = await callProxy(uid, params);
+  if (data.error) throw new Error(data.error);
+  return data.artists || [];
 }
 
 export async function getArtist(uid, artistId) {
-  const token = await getAccessToken(uid);
-  const res = await fetch(`${API_BASE}/artists/${artistId}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!res.ok) throw new Error("ARTIST_FETCH_FAILED");
-  return mapArtist(await res.json());
-}
-
-function mapArtist(a) {
-  return {
-    id: a.id,
-    name: a.name,
-    popularity: a.popularity ?? null,
-    followers: a.followers?.total ?? null,
-    genres: a.genres || [],
-    imageUrl: a.images?.[a.images.length - 1]?.url || a.images?.[0]?.url || null,
-    spotifyUrl: a.external_urls?.spotify || null,
-    fetchedAt: new Date().toISOString()
-  };
+  const params = new URLSearchParams({ action: "artist", id: artistId });
+  const data = await callProxy(uid, params);
+  if (data.error) throw new Error(data.error);
+  return data;
 }

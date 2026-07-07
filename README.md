@@ -28,14 +28,25 @@ ticketflow/
 2. V terminálu ve složce projektu: `firebase deploy --only hosting`
 3. Otevři `https://ticketflow-8e17a.web.app` a přihlas se přes Google
 
-## Spotify API klíče
-Klíče se **nezadávají do kódu** — po přihlášení klikni v aplikaci na ⚙ (Nastavení) a vlož tam:
-- Client ID
-- Client Secret
+## Spotify — proxy Worker (DŮLEŽITÁ ZMĚNA)
+Spotify's Client Credentials Flow je určený pro server-to-server komunikaci — Spotify ho z prohlížeče
+přes CORS nepovoluje spolehlivě (proto předtím nefungovalo vyhledávání interpretů). Řešení je
+stejné jako u AI — vlastní Cloudflare Worker proxy.
 
-Uloží se do `users/{uid}/settings/spotify` ve Firestore (stejný princip jako FMP klíč v TradeFlow). Až je vyplníš, psaní jména interpreta do formuláře spustí automatické vyhledávání a zobrazí popularitu, followers a žánry.
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create** → **Create Worker**
+2. Název např. `ticketflow-spotify-proxy` → Deploy
+3. **Edit code** → smaž vše, vlož obsah `cloudflare-worker/ticketflow-spotify-proxy.js` → **Deploy**
+4. **Settings → Variables and Secrets** → přidej 3 secrets:
+   - `SPOTIFY_CLIENT_ID` — z developer.spotify.com (ten, co už máš)
+   - `SPOTIFY_CLIENT_SECRET` — z developer.spotify.com
+   - `PROXY_SECRET` — libovolný vlastní dlouhý řetězec
+5. Zkopíruj URL Workeru (např. `https://ticketflow-spotify-proxy.tvuj-subdomain.workers.dev`)
+6. V appce → ⚙ Nastavení → sekce **Spotify API** → vlož Worker URL a stejný `PROXY_SECRET`
+7. Klikni **🔬 Otestovat Spotify proxy** — ověří, že vše funguje (zkusí najít "Charlie Puth")
 
-> Pozn.: Client Credentials Flow běží přímo z prohlížeče, takže secret je viditelný v network requestech tvého vlastního prohlížeče (ne v kódu repozitáře). Pro osobní jednouživatelskou appku je to stejný kompromis jako u FMP klíče.
+> Pozn.: Máš teď 2 samostatné Workery — jeden pro AI (Claude), jeden pro Spotify. Je to čistší
+> a bezpečnější než předtím (secret nikdy neopustí server) a navíc to skutečně funguje, zatímco
+> volání přímo z prohlížeče mlčky selhávalo.
 
 ## Datový model (Firestore)
 `users/{uid}/events/{eventId}` — jeden dokument = jedna sledovaná událost, pole pokrývají:
@@ -47,6 +58,8 @@ Uloží se do `users/{uid}/settings/spotify` ve Firestore (stejný princip jako 
 - skutečný zájem (předprodej, fronta, mizení lístků na mapě)
 - Viagogo (sledující, trend ceny, nejlevnější lístek)
 - status: `watching` / `bought` / `sold` / `expired`
+
+`users/{uid}/artists/{artistId}` — žebříček sledovaných interpretů (Spotify popularity, followers, žánry)
 
 ## Skóre atraktivity
 
